@@ -1,0 +1,143 @@
+{{ define "post_forms.html" }}
+<div class="post-form-container">
+    {{ if eq .Action "edit" }}
+        <h2>Modifier un post</h2>
+        <form method="POST" action="/edit-post/{{ .Post.ID }}" enctype="multipart/form-data">
+    {{ else }}
+        <h2>Créer un nouveau post</h2>
+        <form method="POST" action="/create-post" enctype="multipart/form-data">
+    {{ end }}
+
+    <div class="form-group">
+        <label for="title">Titre:</label>
+        <input type="text" id="title" name="title" value="{{ if eq .Action "edit" }}{{ .Post.Title }}{{ end }}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="content">Contenu:</label>
+        <textarea id="content" name="content" required>{{ if eq .Action "edit" }}{{ .Post.Content }}{{ end }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="image">Image (optionnelle):</label>
+        <div class="file-input-wrapper">
+            <label for="image" class="file-input-label">
+                <img src="/static/assets/add_image.svg" alt="add_image">
+                Choisir une image
+            </label>
+            <input type="file" id="image" name="image" accept="image/*" style="display: none;">
+            <div class="file-name">Aucun fichier sélectionné</div>
+        </div>
+        {{ if eq .Action "edit" }}
+            {{ if .Post.ImageURL }}
+                <div class="current-image">
+                    <p>Image actuelle:</p>
+                    <img src="{{ .Post.ImageURL }}" alt="Image du post" style="max-width: 200px;">
+                </div>
+            {{ end }}
+        {{ end }}
+    </div>
+
+    <div class="form-group">
+        <label>Tags:</label>
+        <div class="tag-cloud">
+            {{ range .PopularTags }}
+                <div class="tag-item">
+                    <input type="checkbox" id="tag-{{ .ID }}" name="tags" value="{{ .ID }}" 
+                        {{ if eq $.Action "edit" }}
+                            {{ if index $.SelectedTagIDs .ID }}checked{{ end }}
+                        {{ end }}>
+                    <label for="tag-{{ .ID }}">{{ .Name }}</label>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="newTags">Nouveaux tags (séparés par des virgules):</label>
+        <input type="text" id="newTags" name="newTags" placeholder="ex: mathématiques, physique">
+        <p class="help-text">Vous pouvez ajouter de nouveaux tags s'ils n'existent pas déjà.</p>
+    </div>
+
+    <button type="submit" class="btn-submit">
+        {{ if eq .Action "edit" }}Mettre à jour{{ else }}Créer{{ end }}
+    </button>
+    </form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion du fichier image
+    const fileInput = document.getElementById('image');
+    if (fileInput) {
+        const fileName = document.querySelector('.file-name');
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                fileName.textContent = this.files[0].name;
+                
+                // Prévisualisation de l'image (optionnel)
+                if (document.querySelector('.image-preview') === null) {
+                    const imagePreview = document.createElement('img');
+                    imagePreview.className = 'image-preview';
+                    imagePreview.style.maxWidth = '100%';
+                    imagePreview.style.marginTop = '10px';
+                    imagePreview.style.borderRadius = '8px';
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        document.querySelector('.file-input-wrapper').appendChild(imagePreview);
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.querySelector('.image-preview').src = e.target.result;
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            } else {
+                fileName.textContent = 'Aucun fichier sélectionné';
+                const preview = document.querySelector('.image-preview');
+                if (preview) {
+                    preview.remove();
+                }
+            }
+        });
+    }
+    
+    // Gestion des tags interactifs
+    const tagItems = document.querySelectorAll('.tag-item');
+    
+    tagItems.forEach(function(item) {
+        // Associer l'événement de clic à l'ensemble de l'élément tag
+        item.addEventListener('click', function(e) {
+            // Trouver la checkbox à l'intérieur de cet élément
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            
+            // Inverser l'état de la checkbox (coché/non coché)
+            checkbox.checked = !checkbox.checked;
+            
+            // Mettre à jour l'apparence visuelle
+            if (checkbox.checked) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+            
+            // Empêcher la propagation de l'événement si le clic est sur la checkbox elle-même
+            // pour éviter que l'état ne bascule deux fois
+            if (e.target.tagName === 'INPUT') {
+                e.stopPropagation();
+            }
+        });
+        
+        // S'assurer que l'état visuel initial correspond à l'état de la checkbox
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox && checkbox.checked) {
+            item.classList.add('selected');
+        }
+    });
+});
+</script>
+{{ end }}

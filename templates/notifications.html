@@ -1,0 +1,70 @@
+{{ define "notifications.html" }}
+<div class="notifications-container">
+    <h2>Mes notifications</h2>
+    
+    <div class="notifications-header">
+        <p>Retrouvez ici toutes les interactions avec vos posts</p>
+        
+        <!-- Actions sur les notifications -->
+        <div class="notifications-actions">
+            <form action="/notifications/mark-read" method="POST">
+                <button type="submit" class="btn btn-secondary">Tout marquer comme lu</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Liste des notifications -->
+    <div class="notifications-list">
+        {{ if .Notifications }}
+            {{ range .Notifications }}
+                <div class="notification-item {{ if not .IsRead }}unread{{ end }} {{ .Type }}-notification">
+                    <div class="notification-icon">
+                        {{ if eq .Type "like" }}
+                            <img src="/static/assets/thumbup.svg" alt="Like">
+                        {{ else if eq .Type "dislike" }}
+                            <img src="/static/assets/thumbdown.svg" alt="Dislike">
+                        {{ else if eq .Type "comment" }}
+                            <img src="/static/assets/comment_bubble.svg" alt="Commentaire">
+                        {{ else }}
+                            <img src="/static/assets/notifications.svg" alt="Notification">
+                        {{ end }}
+                    </div>
+                    
+                    <div class="notification-content">
+                        <div class="notification-meta">
+                            <div class="notification-user">
+                                <a href="/user/{{ .ActorUser.ID }}" class="author-link">
+                                    <img src="{{ .ActorUser.AvatarURL }}" alt="{{ .ActorUser.Username }}" class="profile-avatar-small">
+                                    <span>{{ .ActorUser.Username }}</span>
+                                </a>
+                            </div>
+                            <span class="notification-date">{{ .FormattedDate }}</span>
+                        </div>
+                        
+                        <div class="notification-text">
+                            {{ if eq .Type "like" }}
+                                a aimé votre post 
+                            {{ else if eq .Type "dislike" }}
+                                n'a pas aimé votre post 
+                            {{ else if eq .Type "comment" }}
+                                a commenté votre post 
+                            {{ else }}
+                                {{ .Content }}
+                            {{ end }}
+                            
+                            {{ if .Post }}
+                                <a href="/post/{{ .Post.ID }}" class="notification-link">{{ .Post.Title }}</a>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            {{ end }}
+        {{ else }}
+            <div class="empty-notifications">
+                <p>Vous n'avez aucune notification pour le moment.</p>
+                <p>Revenez plus tard ou publiez du contenu pour recevoir des interactions!</p>
+            </div>
+        {{ end }}
+    </div>
+</div>
+{{ end }}

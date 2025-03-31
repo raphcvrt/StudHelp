@@ -1,0 +1,268 @@
+{{ define "profile.html" }}
+<div class="profile-container">
+    <div class="profile-header">
+        <h2>Votre profil</h2>
+        <div class="profile-info">
+            <div class="avatar-container" id="avatar-container">
+                <img src="{{ .User.AvatarURL }}" alt="Avatar" class="profile-avatar" id="profile-avatar">
+                <form id="avatar-form" action="/upload-avatar" method="POST" enctype="multipart/form-data" style="display: none;">
+                    <input type="file" name="avatar" id="avatar-input" accept="image/*">
+                </form>
+                <!-- Cet overlay sera affiché uniquement en mode édition -->
+                <div class="avatar-edit-overlay" id="avatar-edit-overlay" style="display: none;">
+                    <img src="/static/assets/add_image.svg" alt="add_image">
+                </div>
+            </div>
+            <div class="texte-infos">                
+                <div id="profile-info-display">
+                    <div class="info-row">
+                        <p><strong>Surnom de l'étudiant(e):</strong> <span id="username-display">{{ .User.Username }}</span></p>
+                    </div>
+                    <div class="info-row">
+                        <p><strong>Adresse e-mail:</strong> <span id="email-display">{{ .User.Email }}</span></p>
+                    </div>
+                    <p><strong>Membre depuis le</strong> {{ .User.CreatedAt.Format "Jan 02, 2006" }}</p>
+                    
+                    <!-- Ajout des statistiques d'activité -->
+                    <div class="user-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ .TotalPosts }}</div>
+                            <div class="stat-label">Posts publiés</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ .TotalComments }}</div>
+                            <div class="stat-label">Commentaires</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="profile-form" action="/update-profile" method="POST" style="display: none;">
+                    <div class="info-row">
+                        <p><strong>Surnom de l'étudiant:</strong></p>
+                        <input type="text" name="username" value="{{ .User.Username }}" required>
+                    </div>
+                    <div class="info-row">
+                        <p><strong>Adresse e-mail:</strong></p>
+                        <input type="email" name="email" value="{{ .User.Email }}" required>
+                    </div>
+                    <p><strong>Membre depuis le</strong> {{ .User.CreatedAt.Format "Jan 02, 2006" }}</p>
+                    
+                    <div class="form-actions" style="margin-top: 24px;">
+                        <div><button type="submit">Enregistrer</button></div>
+                        <div class="logout-prompt" id="cancel-edit-btn"><a>Annuler</a></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="profile-actions">
+        <div class="logout-prompt" id="edit-profile-btn"><a>Modifier le profil</a></div>
+        <div class="logout-prompt"><a href="/logout" title="Déconnexion">Se déconnecter</a></div>    
+    </div>
+    
+    <div class="profile-content">
+        <!-- Onglets de navigation -->
+        <div class="profile-tabs">
+            <button class="tab-btn active" data-tab="created-posts">Posts créés</button>
+            <button class="tab-btn" data-tab="liked-posts">Posts aimés</button>
+        </div>
+        
+        <!-- Contenu de l'onglet "Posts créés" -->
+        <div class="tab-content" id="created-posts" style="display: block;">
+            <h3>Mes posts</h3>
+            
+            <div class="posts-grid">
+                {{ if .Posts }}
+                    {{ range .Posts }}
+                        <div class="post-card" onclick="window.location='/post/{{ .ID }}'">
+                            <div class="post-header">
+                                <h3 class="post-title">
+                                    <a href="/post/{{ .ID }}">{{ .Title }}</a>
+                                </h3>
+                                <span class="post-meta">{{ .GetFormattedDate }}</span>
+                            </div>
+
+                            {{ if .ImageURL }}
+                                <img class="post-image" src="{{ .ImageURL }}" alt="Image du post">
+                            {{ end }}
+                            
+                            <div class="post-content">
+                                <p>{{ truncate .Content 150 }}</p>
+                            </div>
+                            
+                            <div class="post-footer">
+                                <div class="post-card-stats">
+                                    <div class="post-stat">
+                                        <img src="/static/assets/thumbup.svg" alt="Likes" width="14" height="14">
+                                        <span>{{ .LikeCount }}</span>
+                                        <img src="/static/assets/thumbdown.svg" alt="Dislikes" width="14" height="14">
+                                        <span>{{ .DislikeCount }}</span>
+                                        <img src="/static/assets/comment_bubble.svg" alt="Commentaires" width="14" height="14">
+                                        <span>{{ index $.CommentCounts .ID }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="post-actions">
+                                    <a href="/post/{{ .ID }}" class="read-more">Lire la suite</a>
+                                    <a href="/edit-post/{{ .ID }}" class="edit-post">Modifier</a>
+                                    <form action="/delete-post/{{ .ID }}" method="POST" style="display: inline;">
+                                        <a type="submit" class="edit-post">Supprimer</a>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {{ end }}
+                {{ else }}
+                    <div class="no-posts">
+                        <p>Vous n'avez pas encore créé de posts.</p>
+                        <a href="/create-post" class="btn btn-primary">Créer un post</a>
+                    </div>
+                {{ end }}
+            </div>
+        </div>
+        
+        <!-- Contenu de l'onglet "Posts aimés" -->
+        <div class="tab-content" id="liked-posts" style="display: none;">
+            <h3>Posts que j'ai aimés</h3>
+            
+            <div class="posts-grid">
+                {{ if .LikedPosts }}
+                    {{ range .LikedPosts }}
+                        <div class="post-card" onclick="window.location='/post/{{ .ID }}'">
+                            <div class="post-header">
+                                <h3 class="post-title">
+                                    <a href="/post/{{ .ID }}">{{ .Title }}</a>
+                                </h3>
+                                <div class="post-meta">
+                                    {{ with index $.Authors .UserID }}
+                                    <span class="author">
+                                        <a href="/user/{{ .ID }}" class="author-link" onclick="event.stopPropagation()">
+                                            <img src="{{ .AvatarURL }}" alt="{{ .Username }}" class="profile-avatar-small">
+                                            <span>{{ .Username }}</span>
+                                        </a>
+                                    </span>
+                                    {{ end }}
+                                    <span class="date">{{ .GetFormattedDate }}</span>
+                                </div>
+                            </div>
+
+                            {{ if .ImageURL }}
+                                <img class="post-image" src="{{ .ImageURL }}" alt="Image du post">
+                            {{ end }}
+                            
+                            <div class="post-content">
+                                <p>{{ truncate .Content 150 }}</p>
+                            </div>
+                            
+                            <div class="post-footer">
+                                <div class="post-card-stats">
+                                    <div class="post-stat">
+                                        <img src="/static/assets/thumbup.svg" alt="Likes" width="14" height="14">
+                                        <span>{{ .LikeCount }}</span>
+                                        <img src="/static/assets/thumbdown.svg" alt="Dislikes" width="14" height="14">
+                                        <span>{{ .DislikeCount }}</span>
+                                        <img src="/static/assets/comment_bubble.svg" alt="Commentaires" width="14" height="14">
+                                        <span>{{ index $.CommentCounts .ID }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="post-actions">
+                                    <a href="/post/{{ .ID }}" class="read-more">Lire la suite</a>
+                                </div>
+                            </div>
+                        </div>
+                    {{ end }}
+                {{ else }}
+                    <div class="no-posts">
+                        <p>Vous n'avez encore aimé aucun post.</p>
+                        <a href="/" class="btn btn-primary">Parcourir les posts</a>
+                    </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Script pour la gestion du profil (existant)
+        const editProfileBtn = document.getElementById('edit-profile-btn');
+        const profileInfoDisplay = document.getElementById('profile-info-display');
+        const profileForm = document.getElementById('profile-form');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const avatarContainer = document.querySelector('.avatar-container');
+        const avatarEditOverlay = document.getElementById('avatar-edit-overlay');
+        const avatarInput = document.getElementById('avatar-input');
+        const avatarForm = document.getElementById('avatar-form');
+        
+        // Par défaut, le conteneur de l'avatar n'est pas cliquable
+        avatarContainer.style.pointerEvents = 'none';
+        
+        // Activer le mode édition
+        if (editProfileBtn) {
+            editProfileBtn.addEventListener('click', function() {
+                profileInfoDisplay.style.display = 'none';
+                editProfileBtn.style.display = 'none';
+                profileForm.style.display = 'block';
+                
+                // Activer la modification de l'avatar
+                avatarContainer.style.pointerEvents = 'auto';
+                avatarEditOverlay.style.display = 'flex';
+            });
+        }
+        
+        // Désactiver le mode édition
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener('click', function() {
+                profileInfoDisplay.style.display = 'block';
+                editProfileBtn.style.display = 'block';
+                profileForm.style.display = 'none';
+                
+                // Désactiver la modification de l'avatar
+                avatarContainer.style.pointerEvents = 'none';
+                avatarEditOverlay.style.display = 'none';
+            });
+        }
+        
+        // Gestion de l'upload d'avatar (uniquement en mode édition)
+        avatarContainer.addEventListener('click', function() {
+            avatarInput.click();
+        });
+        
+        avatarInput.addEventListener('change', function() {
+            if (avatarInput.files.length > 0) {
+                avatarForm.submit();
+            }
+        });
+                
+        // Nouveau script pour la gestion des onglets
+        const tabs = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // S'assurer que le premier onglet est actif par défaut
+        document.querySelector('.tab-btn[data-tab="created-posts"]').classList.add('active');
+        document.getElementById('created-posts').style.display = 'block';
+        document.getElementById('liked-posts').style.display = 'none';
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Retirer la classe active de tous les onglets
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                // Ajouter la classe active à l'onglet cliqué
+                this.classList.add('active');
+                
+                // Cacher tous les contenus d'onglets
+                tabContents.forEach(content => {
+                    content.style.display = 'none';
+                });
+                
+                // Afficher le contenu de l'onglet correspondant
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId).style.display = 'block';
+            });
+        });
+    });
+</script>
+{{ end }}

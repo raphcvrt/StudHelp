@@ -1,0 +1,223 @@
+{{ define "post_view.html" }}
+<div class="post-view">
+    <article class="main-post">
+        <h2>{{ .Post.Title }}</h2>
+        <div class="post-meta">
+            <span class="author">
+                <a href="/user/{{ .Author.ID }}" class="author-link">
+                    <img src="{{ .Author.AvatarURL }}" alt="{{ .Author.Username }}" class="profile-avatar-small">
+                    <span>{{ .Author.Username }}</span>
+                </a>
+            </span>
+            <span class="date">le {{ .Post.GetFormattedDate }}</span>
+        </div>
+        
+        <!-- Affichage des tags -->
+        {{ if .Tags }}
+        <div class="post-tags">
+            {{ range .Tags }}
+                <a href="/?tag={{ .ID }}" class="tag">{{ .Name }}</a>
+            {{ end }}
+        </div>
+        {{ end }}
+        <div class="profile-info" style="display: flex; flex-direction: column;">
+            {{ if .Post.ImageURL }}
+            <div>
+                <img class="post-image" src="{{ .Post.ImageURL }}" alt="Image du post">
+            </div>
+            {{ end }}
+            
+            <div class="post-content">
+                {{ .Post.Content }}
+            </div>
+        </div>
+        <!-- Actions sur le post (like, dislike, etc.) -->
+        <div class="post-actions">
+            {{ if .IsAuthenticated }}
+            <div class="like-actions">
+                <button class="like-btn {{ if .UserLike }}{{ if .UserLike.IsLike }}active{{ end }}{{ end }}" data-post-id="{{ .Post.ID }}" data-action="like">
+                    <img src="/static/assets/thumbup.svg" alt="Like" width="18" height="18">
+                    <span class="like-count">{{ .Post.LikeCount }}</span>
+                </button>
+                <button class="dislike-btn {{ if .UserLike }}{{ if not .UserLike.IsLike }}active{{ end }}{{ end }}" data-post-id="{{ .Post.ID }}" data-action="dislike">
+                    <img src="/static/assets/thumbdown.svg" alt="Dislike" width="18" height="18">
+                    <span class="dislike-count">{{ .Post.DislikeCount }}</span>
+                </button>
+            </div>
+                {{ if eq .CurrentUser.ID .Post.UserID }}
+                <div class="owner-actions">
+                    <button type="submit" onclick="window.location='/edit-post/{{ .Post.ID }}'" class="edit-btn">Modifier</button>
+                    <form action="/delete-post/{{ .Post.ID }}" method="POST" onsubmit="return confirm('Supprimer ce post définitivement ?');">
+                        <button type="submit" class="delete-btn">Supprimer</button>
+                    </form>
+                </div>
+                {{ else }}
+                <div class="report-action">
+                    <button type="submit" onclick="document.getElementById('report-form').style.display = 'block'">Signaler</button>
+                </div>
+                {{ end }}
+            {{ end }}
+        </div>
+    </article>
+
+    <!-- Formulaire de signalement (caché par défaut) -->
+    <div id="report-form" class="report-form" style="display: none;">
+        <h3>Signaler ce post</h3>
+        <form method="POST" action="/report-post?id={{ .Post.ID }}">
+            <div class="form-group">
+                <label for="reason">Raison:</label>
+                <select id="reason" name="reason" required>
+                    <option value="">Sélectionnez une raison</option>
+                    <option value="1">Spam</option>
+                    <option value="2">Contenu abusif</option>
+                    <option value="3">Discours haineux</option>
+                    <option value="4">Autre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="document.getElementById('report-form').style.display = 'none'">Annuler</button>
+                <button type="submit">Envoyer</button>
+            </div>
+        </form>
+    </div>
+
+    <section class="comments-section">
+        <h3>Commentaires ({{ len .Comments }})</h3>
+        
+        {{ if .IsAuthenticated }}
+        <div class="comment-form">
+            <form method="POST" action="/post/{{ .Post.ID }}/comment">
+                <textarea name="content" placeholder="Ajouter un commentaire..." required></textarea>
+                <button class="btn-create-post">Commenter</button>
+            </form>
+        </div>
+        {{ else }}
+        <div class="login-prompt">
+            <a href="/login">Connectez-vous</a> pour ajouter un commentaire.
+        </div>
+        {{ end }}
+        
+        {{ if .Comments }}
+        <div class="comments-list">
+            {{ range .Comments }}
+            <div class="comment">
+                <div class="comment-meta">
+                    {{ with index $.CommentAuthors .UserID }}
+                    <span class="author">
+                        <a href="/user/{{ .ID }}" class="author-link">
+                            <img src="{{ .AvatarURL }}" alt="{{ .Username }}" class="profile-avatar-small">
+                            <span>{{ .Username }}</span>
+                        </a>
+                    </span>
+                    {{ end }}
+                    <span class="date">{{ .CreatedAt.Format "02 Jan 2006 à 15:04" }}</span>
+                </div>
+                <div class="comment-content">
+                    {{ .Content }}
+                </div>
+                <div class="comment-actions">
+                    <div class="like-actions">
+                        <button class="like-btn {{ with index $.CommentLikes .ID }}{{ if .IsLike }}active{{ end }}{{ end }}" data-comment-id="{{ .ID }}" data-action="like">
+                            <img src="/static/assets/thumbup.svg" alt="Like" width="14" height="14">
+                            <span class="like-count">{{ .LikeCount }}</span>
+                        </button>
+                        <button class="dislike-btn {{ with index $.CommentLikes .ID }}{{ if not .IsLike }}active{{ end }}{{ end }}" data-comment-id="{{ .ID }}" data-action="dislike">
+                            <img src="/static/assets/thumbdown.svg" alt="Dislike" width="14" height="14">
+                            <span class="dislike-count">{{ .DislikeCount }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+        {{ else }}
+        <div class="no-comments">
+            Aucun commentaire pour l'instant. Soyez le premier à commenter !
+        </div>
+        {{ end }}
+    </section>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gestion des likes/dislikes pour les posts
+        const postLikeButtons = document.querySelectorAll('.main-post .like-btn, .main-post .dislike-btn');
+        
+        postLikeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const postId = this.getAttribute('data-post-id');
+                const action = this.getAttribute('data-action');
+                
+                fetch(`/api/post/${postId}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mettre à jour les compteurs du post
+                        document.querySelector('.main-post .like-count').textContent = data.likes;
+                        document.querySelector('.main-post .dislike-count').textContent = data.dislikes;
+                        
+                        // Mettre à jour les classes actives
+                        document.querySelector('.main-post .like-btn').classList.remove('active');
+                        document.querySelector('.main-post .dislike-btn').classList.remove('active');
+                        
+                        if (data.userAction === 'like') {
+                            document.querySelector('.main-post .like-btn').classList.add('active');
+                        } else if (data.userAction === 'dislike') {
+                            document.querySelector('.main-post .dislike-btn').classList.add('active');
+                        }
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+        
+        // Gestion des likes/dislikes pour les commentaires
+        const commentLikeButtons = document.querySelectorAll('.comment .like-btn, .comment .dislike-btn');
+        
+        commentLikeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                const action = this.getAttribute('data-action');
+                
+                fetch(`/api/comment/${commentId}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Trouver le commentaire correspondant
+                        const commentElement = this.closest('.comment');
+                        
+                        // Mettre à jour les compteurs de ce commentaire spécifique
+                        commentElement.querySelector('.like-count').textContent = data.likes;
+                        commentElement.querySelector('.dislike-count').textContent = data.dislikes;
+                        
+                        // Mettre à jour les classes actives
+                        commentElement.querySelector('.like-btn').classList.remove('active');
+                        commentElement.querySelector('.dislike-btn').classList.remove('active');
+                        
+                        if (data.userAction === 'like') {
+                            commentElement.querySelector('.like-btn').classList.add('active');
+                        } else if (data.userAction === 'dislike') {
+                            commentElement.querySelector('.dislike-btn').classList.add('active');
+                        }
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+    });
+    </script>
+{{ end }}

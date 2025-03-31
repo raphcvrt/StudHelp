@@ -1,0 +1,209 @@
+{{ define "index.html" }}
+<div class="home-container">
+    <!-- Bouton de création de post ou message de connexion -->
+    {{ if .IsAuthenticated }}
+        <a href="/create-post" class="btn-create-post-plus">
+            <img src="/static/assets/create-post.svg" alt="Créer un post">
+        </a>
+    {{ else }}
+        <p class="login-prompt">Veuillez <a href="/login">vous connecter</a> pour poster.</p>
+    {{ end }}
+    
+    <!-- Bouton pour afficher/masquer la recherche -->
+    <button id="search-toggle" class="search-toggle-btn">
+        <img src="/static/assets/search.svg" alt="Rechercher">
+    </button>
+    
+    <!-- Barre de recherche et options de tri (cachée par défaut) -->
+    <div id="search-filter-container" class="search-filter-container">
+        <form id="search-form" action="/" method="GET" class="search-bar">
+            <div class="search-input-group">
+                <input type="text" name="search" placeholder="Rechercher dans les posts..." value="{{ .SearchQuery }}">
+                <button type="submit"><img src="/static/assets/search.svg" alt=""></button>
+            </div>
+            
+            <div class="filter-options">
+                <div class="filter-dropdown">
+                    <select id="tag-filter" name="tag">
+                        <option value="" disabled selected>Filtrer par</option>
+                        {{ range .AllTags }}
+                            <option value="{{ .ID }}" {{ if eq $.CurrentTagID .ID }}selected{{ end }}>{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+                
+                <div class="filter-dropdown">
+                    <select id="sort-by" name="sort">
+                        <option value="" disabled selected>Trier par</option>
+                        <option value="date_desc" {{ if eq .SortBy "date_desc" }}selected{{ end }}>Plus récent</option>
+                        <option value="date_asc" {{ if eq .SortBy "date_asc" }}selected{{ end }}>Plus ancien</option>
+                        <option value="likes_desc" {{ if eq .SortBy "likes_desc" }}selected{{ end }}>Plus de likes</option>
+                        <option value="likes_asc" {{ if eq .SortBy "likes_asc" }}selected{{ end }}>Moins de likes</option>
+                        <option value="dislikes_desc" {{ if eq .SortBy "dislikes_desc" }}selected{{ end }}>Plus de dislikes</option>
+                        <option value="dislikes_asc" {{ if eq .SortBy "dislikes_asc" }}selected{{ end }}>Moins de dislikes</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Tags populaires -->
+    {{ if .PopularTags }}
+    <div class="popular-tags">
+        <h3>Tags populaires</h3>
+        <div class="tags-cloud">
+            {{ range .PopularTags }}
+                <a href="/?tag={{ .ID }}" class="tag {{ if eq $.CurrentTagID .ID }}active-tag{{ end }}">{{ .Name }}</a>
+            {{ end }}
+        </div>
+    </div>
+    {{ end }}
+    
+    <!-- Titre de la section -->
+    {{ if .SearchQuery }}
+        <div class="search-results-header">
+            <h2>Résultats de recherche pour "{{ .SearchQuery }}"</h2>
+            <a href="/" class="clear-search">Effacer la recherche</a>
+        </div>
+    {{ else if .CurrentTagID }}
+        <div class="tag-results-header">
+            <h2>Derniers posts à propos de <span class="highlighted-tag">{{ .CurrentTagName }}</span></h2>
+            <a href="/" class="clear-filter">Voir tous les posts</a>
+        </div>
+    {{ else }}
+        <h2>Derniers posts</h2>
+    {{ end }}
+    
+    <!-- Liste des posts -->
+    <div class="post-feed">
+        {{ if .Posts }}
+            {{ range .Posts }}
+            <div class="post-card" onclick="window.location='/post/{{ .ID }}'">
+                <h3><a href="/post/{{ .ID }}">{{ .Title }}</a></h3>
+                <div class="post-meta">
+                    {{ with index $.Authors .UserID }}
+                    <span>par</span><img src="{{ .AvatarURL }}" alt="Photo de profil" class="profile-avatar-small"><span>{{ .Username }}</span>
+                    {{ end }}
+                    <span>{{ .CreatedAt.Format "02 Jan 2006" }}</span>
+                </div>
+                
+                <!-- Prévisualisation du contenu -->
+                <div class="post-preview">
+                    {{ truncate .Content 35 }}
+                    <a href="/post/{{ .ID }}">  lire plus</a>
+                </div>
+                
+                {{ if index $.PostTags .ID }}
+                <div class="post-card-tags">
+                    {{ range index $.PostTags .ID }}
+                        <a href="/?tag={{ .ID }}" class="tag" onclick="event.stopPropagation()">{{ .Name }}</a>
+                    {{ end }}
+                </div>
+                {{ end }}
+                <div class="post-card-stats">
+                    <div class="post-stat">
+                        <img src="/static/assets/thumbup.svg" alt="Likes" width="14" height="14">
+                        <span>{{ .LikeCount }}</span>
+                        <img src="/static/assets/thumbdown.svg" alt="Dislikes" width="14" height="14">
+                        <span>{{ .DislikeCount }}</span>
+                        <img src="/static/assets/comment_bubble.svg" alt="Commentaires" width="14" height="14">
+                        <span>{{ index $.CommentCounts .ID }}</span>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        {{ else }}
+            <div class="no-posts">
+                {{ if .SearchQuery }}
+                    <p>Aucun résultat trouvé pour "{{ .SearchQuery }}".</p>
+                {{ else if .CurrentTagID }}
+                    <p>Aucun post trouvé pour ce tag.</p>
+                {{ else }}
+                    <p>Aucun post disponible pour le moment.</p>
+                {{ end }}
+            </div>
+        {{ end }}
+    </div>
+    
+    <!-- Pagination -->
+    {{ if gt .TotalPages 1 }}
+    <div class="pagination">
+        {{ if gt .CurrentPage 1 }}
+            <a href="{{ .PaginationBaseURL }}&page={{ sub .CurrentPage 1 }}" class="page-link">&laquo; Précédent</a>
+        {{ end }}
+        
+        {{ range $i := seq 1 .TotalPages }}
+            <a href="{{ $.PaginationBaseURL }}&page={{ $i }}" class="page-link {{ if eq $i $.CurrentPage }}active{{ end }}">{{ $i }}</a>
+        {{ end }}
+        
+        {{ if lt .CurrentPage .TotalPages }}
+            <a href="{{ .PaginationBaseURL }}&page={{ add .CurrentPage 1 }}" class="page-link">Suivant &raquo;</a>
+        {{ end }}
+    </div>
+    {{ end }}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Référence aux éléments
+    const searchToggleBtn = document.getElementById('search-toggle');
+    const searchContainer = document.getElementById('search-filter-container');
+    const searchForm = document.getElementById('search-form');
+    const tagFilter = document.getElementById('tag-filter');
+    const sortBy = document.getElementById('sort-by');
+    
+    // Vérification de l'existence des éléments avant d'ajouter des écouteurs d'événements
+    if (!searchToggleBtn || !searchContainer) {
+        console.error('Éléments de recherche non trouvés');
+        return;
+    }
+    
+    // Vérifier si une recherche ou un filtre est actif en vérifiant l'URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const isSearchActive = searchParams.has('search') || searchParams.has('tag') || searchParams.has('sort');
+    
+    // Afficher le conteneur de recherche si une recherche est active
+    if (isSearchActive) {
+        searchContainer.classList.add('visible');
+        searchToggleBtn.classList.add('active');
+    } else {
+        // S'assurer que le conteneur est caché si aucune recherche n'est active
+        searchContainer.classList.remove('visible');
+        searchToggleBtn.classList.remove('active');
+    }
+    
+    // Fonction pour basculer la visibilité du conteneur de recherche
+    searchToggleBtn.addEventListener('click', function() {
+        searchContainer.classList.toggle('visible');
+        searchToggleBtn.classList.toggle('active');
+        
+        // Mettre le focus sur le champ de recherche si le conteneur est visible
+        if (searchContainer.classList.contains('visible')) {
+            setTimeout(() => {
+                const searchInput = document.querySelector('input[name="search"]');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }, 300);
+        }
+    });
+    
+    // Appliquer les filtres automatiquement quand ils changent
+    if (tagFilter) {
+        tagFilter.addEventListener('change', function() {
+            if (searchForm) {
+                searchForm.submit();
+            }
+        });
+    }
+    
+    if (sortBy) {
+        sortBy.addEventListener('change', function() {
+            if (searchForm) {
+                searchForm.submit();
+            }
+        });
+    }
+});
+</script>
+{{ end }}

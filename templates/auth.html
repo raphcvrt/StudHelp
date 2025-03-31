@@ -1,0 +1,194 @@
+{{ define "auth.html" }}
+<div class="auth-container">
+    <h2>{{ if eq .Action "login" }}Connexion{{ else }}Inscription{{ end }}</h2>
+    
+    {{ if .Error }}
+    <div class="alert alert-error">
+        {{ .Error }}
+    </div>
+    {{ end }}
+
+    <!-- Formulaire simplifié, différents pour login et register -->
+    {{ if eq .Action "login" }}
+    <!-- FORMULAIRE DE CONNEXION -->
+    <form method="POST" action="/login">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="{{ if .FormData }}{{ .FormData.email }}{{ end }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <button type="submit">Se connecter</button>
+    </form>
+    {{ else }}
+    <!-- FORMULAIRE D'INSCRIPTION -->
+    <form method="POST" action="/register" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="avatar">Photo de profil</label>
+            <small class="help-text">Facultatif - Format JPG/PNG (max 10MB)</small>
+            <div class="file-input-wrapper">
+                <label for="avatar" class="file-input-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Choisir une photo
+                </label>
+                <input type="file" name="avatar" id="avatar" accept="image/*" style="display: none;">
+                <div class="file-name">Aucun fichier sélectionné</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="username">Nom d'utilisateur</label>
+            <input type="text" id="username" name="username" value="{{ if .FormData }}{{ .FormData.username }}{{ end }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="reg-email">Email</label>
+            <input type="email" id="reg-email" name="email" value="{{ if .FormData }}{{ .FormData.email }}{{ end }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="reg-password">Mot de passe</label>
+            <input type="password" id="reg-password" name="password" required>
+            <div class="password-strength-container">
+                <div class="password-strength-meter">
+                    <div class="password-strength-bar" id="password-strength-bar"></div>
+                </div>
+                <div class="password-strength-text" id="password-strength-text">Force du mot de passe</div>
+            </div>
+            <div class="password-criteria" id="password-criteria">
+                <div class="criteria-item" id="criteria-length">8 caractères minimum</div>
+                <div class="criteria-item" id="criteria-uppercase">Au moins une majuscule</div>
+                <div class="criteria-item" id="criteria-lowercase">Au moins une minuscule</div>
+                <div class="criteria-item" id="criteria-number">Au moins un chiffre</div>
+                <div class="criteria-item" id="criteria-special">Au moins un caractère spécial</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="confirm-password">Confirmer le mot de passe</label>
+            <input type="password" id="confirm-password" name="confirm_password" required>
+            <div class="password-match" id="password-match"></div>
+        </div>
+
+        <button type="submit">S'inscrire</button>
+    </form>
+    {{ end }}
+
+    <div class="auth-switch">
+        {{ if eq .Action "login" }}
+        <p>Pas de compte ? <a href="/login?action=register">S'inscrire</a></p>
+        {{ else }}
+        <p>Déjà un compte ? <a href="/login?action=login">Se connecter</a></p>
+        {{ end }}
+    </div>
+</div>
+<script>
+// Script minimaliste pour le formulaire d'inscription seulement
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestionnaire pour l'affichage du nom de fichier
+    const fileInput = document.getElementById('avatar');
+    if (fileInput) {
+        const fileName = document.querySelector('.file-name');
+        fileInput.addEventListener('change', function() {
+            fileName.textContent = this.files && this.files[0] ? this.files[0].name : 'Aucun fichier sélectionné';
+        });
+    }
+
+    // Vérification de la force du mot de passe (seulement pour l'inscription)
+    const passwordInput = document.getElementById('reg-password');
+    if (passwordInput) {
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const passwordStrengthBar = document.getElementById('password-strength-bar');
+        const passwordStrengthText = document.getElementById('password-strength-text');
+        const passwordMatch = document.getElementById('password-match');
+        
+        // Critères
+        const criteriaLength = document.getElementById('criteria-length');
+        const criteriaUppercase = document.getElementById('criteria-uppercase');
+        const criteriaLowercase = document.getElementById('criteria-lowercase');
+        const criteriaNumber = document.getElementById('criteria-number');
+        const criteriaSpecial = document.getElementById('criteria-special');
+
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            
+            // Vérification des critères
+            const hasMinLength = password.length >= 8;
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasLowercase = /[a-z]/.test(password);
+            const hasNumber = /[0-9]/.test(password);
+            const hasSpecial = /[^A-Za-z0-9]/.test(password);
+            
+            // Calcul du score (0-4)
+            let score = 0;
+            if (hasMinLength) score++;
+            if (hasUppercase && hasLowercase) score++;
+            if (hasNumber) score++;
+            if (hasSpecial) score++;
+            
+            // Mise à jour de la barre
+            const percentage = (score / 4) * 100;
+            passwordStrengthBar.style.width = percentage + '%';
+            
+            // Couleur et texte selon le score
+            if (score === 0) {
+                passwordStrengthBar.style.backgroundColor = '#e53935';
+                passwordStrengthText.textContent = 'Très faible';
+            } else if (score === 1) {
+                passwordStrengthBar.style.backgroundColor = '#ef6c00';
+                passwordStrengthText.textContent = 'Faible';
+            } else if (score === 2) {
+                passwordStrengthBar.style.backgroundColor = '#fbc02d';
+                passwordStrengthText.textContent = 'Moyen';
+            } else if (score === 3) {
+                passwordStrengthBar.style.backgroundColor = '#7cb342';
+                passwordStrengthText.textContent = 'Fort';
+            } else {
+                passwordStrengthBar.style.backgroundColor = '#2e7d32';
+                passwordStrengthText.textContent = 'Très fort';
+            }
+            
+            // Mise à jour des critères
+            criteriaLength.classList.toggle('valid', hasMinLength);
+            criteriaUppercase.classList.toggle('valid', hasUppercase);
+            criteriaLowercase.classList.toggle('valid', hasLowercase);
+            criteriaNumber.classList.toggle('valid', hasNumber);
+            criteriaSpecial.classList.toggle('valid', hasSpecial);
+            
+            // Vérifier correspondance si confirmation remplie
+            if (confirmPasswordInput.value) {
+                checkPasswordMatch();
+            }
+        });
+        
+        if (confirmPasswordInput) {
+            confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+            
+            function checkPasswordMatch() {
+                const password = passwordInput.value;
+                const confirmPwd = confirmPasswordInput.value;
+                
+                if (confirmPwd === '') {
+                    passwordMatch.textContent = '';
+                    passwordMatch.className = 'password-match';
+                } else if (password === confirmPwd) {
+                    passwordMatch.textContent = 'Les mots de passe correspondent';
+                    passwordMatch.className = 'password-match match';
+                } else {
+                    passwordMatch.textContent = 'Les mots de passe ne correspondent pas';
+                    passwordMatch.className = 'password-match no-match';
+                }
+            }
+        }
+    }
+});
+</script>
+{{ end }}

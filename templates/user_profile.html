@@ -1,0 +1,80 @@
+{{ define "user_profile.html" }}
+<div class="profile-container">
+    <div class="profile-header">
+        <h2>Profil de {{ .User.Username }}</h2>
+        <div class="profile-info">
+            <div class="avatar-container">
+                <img src="{{ .User.AvatarURL }}" alt="Avatar" class="profile-avatar">
+            </div>
+            <div class="texte-infos">                
+                <div id="profile-info-display">
+                    <div class="info-row">
+                        <p><strong>Surnom de l'étudiant:</strong> <span>{{ .User.Username }}</span></p>
+                    </div>
+                    <p><strong>Membre depuis le</strong> {{ .User.CreatedAt.Format "Jan 02, 2006" }}</p>
+                    
+                    <!-- Ajout des statistiques d'activité -->
+                    <div class="user-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ .TotalPosts }}</div>
+                            <div class="stat-label">Posts publiés</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ .TotalComments }}</div>
+                            <div class="stat-label">Commentaires</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="profile-content">
+        <h3>Posts de {{ .User.Username }}</h3>
+        
+        <div class="posts-grid">
+            {{ if .Posts }}
+                {{ range .Posts }}
+                    <div class="post-card" onclick="window.location='/post/{{ .ID }}'">
+                        <div class="post-header">
+                            <h3 class="post-title">
+                                <a href="/post/{{ .ID }}">{{ .Title }}</a>
+                            </h3>
+                            <span class="post-meta">{{ .GetFormattedDate }}</span>
+                        </div>
+
+                        {{ if .ImageURL }}
+                            <img class="post-image" src="{{ .ImageURL }}" alt="Image du post">
+                        {{ end }}
+                        
+                        <div class="post-content">
+                            <p>{{ truncate .Content 150 }}</p>
+                        </div>
+                        
+                        <div class="post-footer">
+                            <!-- Ajout des compteurs de likes/dislikes -->
+                            <div class="post-card-stats">
+                                <div class="post-stat">
+                                    <img src="/static/assets/thumbup.svg" alt="Likes" width="14" height="14">
+                                    <span>{{ .LikeCount }}</span>
+                                    <img src="/static/assets/thumbdown.svg" alt="Dislikes" width="14" height="14">
+                                    <span>{{ .DislikeCount }}</span>
+                                    <img src="/static/assets/comment_bubble.svg" alt="Commentaires" width="14" height="14">
+                                    <span>{{ index $.CommentCounts .ID }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="post-actions">
+                                <a href="/post/{{ .ID }}" class="read-more">Lire la suite</a>
+                            </div>
+                        </div>
+                    </div>
+                {{ end }}
+            {{ else }}
+                <div class="no-posts">
+                    <p>Cet utilisateur n'a pas encore créé de posts.</p>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+{{ end }}
